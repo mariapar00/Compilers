@@ -1,0 +1,10 @@
+1. expr ->  term expr2
+2. expr2 -> ^ term expr2
+3.        | e 
+4. term ->  factor term2 
+5. term2 -> & factor term2
+6.         | e
+7. factor -> num
+8.          | (expr)
+9. num -> '0...9'
+        

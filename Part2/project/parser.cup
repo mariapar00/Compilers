@@ -1,0 +1,88 @@
+/* Simple +/-/* expression language; parser evaluates constant expressions on the fly*/
+/**
+ *  Package and Import Specifications
+ */
+import java_cup.runtime.*;
+import java.util.*;
+
+/**
+ *  Usercode Components
+ */
+parser code {:
+    // Connect this parser to a scanner!
+    Scanner s;
+    Parser(Scanner s){ this.s=s; }
+    public static void print(String s){ System.out.println(s); }
+:}
+
+/* define how to connect to the scanner! */
+scan with {: return s.next_token(); :};
+
+/**
+ *  Symbol Lists
+ */
+
+/* Terminals (tokens returned by the scanner). */
+terminal            CONCAT, REVERSE, PREFIX, IF, ELSE, LPAREN, RPAREN, RBRACKET, COMMA, RPAR_LBRACK;
+terminal String     STRING_LITERAL, IDENTIFIER;       
+
+/*  Non terminals */
+non terminal program;
+non terminal String expr, func_call, func_define, par1, parameter1, par2, parameter2, main, functions;      // used to store evaluated subexpressions
+
+/**
+ *  Precedence Declarations
+ */
+precedence left IF, ELSE;
+precedence left CONCAT;
+precedence left REVERSE;
+precedence left IDENTIFIER;
+precedence left COMMA;
+precedence left RPAREN;
+precedence left RPAR_LBRACK;
+
+/**
+ *  The Grammar Rules
+ */
+
+program     ::=   functions:f                   {: print("import java.util.*;\n\npublic class Main {" + f + "\n}");   :}
+;
+
+functions   ::=   func_define:f functions:p     {: RESULT = f + p;  :}
+                | main:m                        {: RESULT = "\n\tpublic static void main(String[] args) {" + m + "\n\t}"; :}      
+;
+
+main        ::=   expr:e main:m            {: if(m!=null) RESULT = "\n\t\tSystem.out.println(" + e + ");" + m; else RESULT = "\n\t\tSystem.out.println(" + e + ");";    :} 
+                |
+;
+
+func_define ::=   IDENTIFIER:x LPAREN par2:p RPAR_LBRACK expr:e2 RBRACKET      {:  if(p!=null) RESULT = "\n\tpublic static String " + x + "(" + p + ")" + "{ \n\t\treturn " + e2 + ";\n\t}"; 
+                                                                                   else RESULT = "\n\tpublic static String " + x + "()" + "{ \n\t\treturn " + e2 + ";\n\t}";  :}   
+;
+
+par2        ::=   IDENTIFIER:e parameter2:p                {: if(p!=null) RESULT = "String " + e + p; else RESULT = "String " + e; :}  
+                |
+;
+
+parameter2  ::=   COMMA IDENTIFIER:e parameter2:p          {: if(p!=null) RESULT = ", " + "String " + e + p; else RESULT = ", " + "String " + e; :}
+                |
+;
+
+func_call   ::=   IDENTIFIER:x LPAREN par1:p RPAREN        {: if(p!=null) RESULT = x + "(" + p + ")"; else RESULT = x + "()"; :} 
+;
+
+par1        ::=   expr:e parameter1:p           {: if(p!=null) RESULT = e + p; else RESULT = e; :}  
+                |
+;
+
+parameter1  ::=   COMMA expr:e parameter1:p     {: if(p!=null) RESULT = ", " + e + p; else RESULT = ", " + e; :}
+                |
+;
+
+expr        ::=   IF LPAREN expr:e1 PREFIX expr:e2 RPAREN expr:e3 ELSE expr:e4    {: RESULT = "(" + e2 + ".startsWith(" + e1 + ")?" + e3 + ":" + e4 + ")";   :}
+                | expr:e1 CONCAT expr:e2                                          {: RESULT = e1 + "+" + e2;   :}
+                | REVERSE expr:e                                                  {: RESULT = "(new StringBuilder(" + e + ")).reverse().toString()";  :}
+                | STRING_LITERAL:s	                                              {: RESULT = "\"" + s + "\"";  :}
+                | IDENTIFIER:x                                                    {: RESULT = x;  :}        
+                | func_call:f                                                     {: RESULT = f;  :}     
+;
